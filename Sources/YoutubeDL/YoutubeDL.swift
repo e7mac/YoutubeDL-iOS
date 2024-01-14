@@ -236,7 +236,7 @@ open class YoutubeDL: NSObject {
                     print(#function, "no download with", directory, pendingDownloads.map(\.directory))
                     return
                 }
-                guard tryMerge(directory: directory, title: url.title, timeRange: download.timeRange) else { return }
+                let _ = tryMerge(directory: directory, title: url.title, timeRange: download.timeRange)
                 finishedContinuation?.yield(url)
             case .otherVideo:
                 do {
