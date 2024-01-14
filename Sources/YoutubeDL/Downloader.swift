@@ -223,7 +223,6 @@ extension Downloader: URLSessionDownloadDelegate {
             }
             
             if range.isEmpty {
-                notify(body: "finished \(url.lastPathComponent)")
                 removeItem(at: url)
                 try FileManager.default.moveItem(at: location, to: url)
                 print(#function, "moved to", url.path)
@@ -235,7 +234,6 @@ extension Downloader: URLSessionDownloadDelegate {
                 
                 streamContinuation?.yield((url, kind))
             } else {
-                //                notify(body: "\(range.upperBound * 100 / size)% \(url.lastPathComponent)")
                 let part = url.appendingPathExtension("part")
                 let file = try FileHandle(forWritingTo: part)
                 
@@ -321,21 +319,3 @@ extension URLSessionDownloadTask {
 }
 
 var isTest = false
-
-// FIXME: move to view controller?
-@available(iOS 12.0, *)
-public func notify(body: String, identifier: String = "Download") {
-    guard !isTest else { return }
-    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound, .providesAppNotificationSettings]) { (granted, error) in
-        guard granted else {
-            print(#function, "granted =", granted, error ?? "no error")
-            return
-        }
-        
-        print(#function, body)
-        let content = UNMutableNotificationContent()
-        content.body = body
-        let notificationRequest = UNNotificationRequest(identifier: identifier, content: content, trigger: nil)
-        UNUserNotificationCenter.current().add(notificationRequest, withCompletionHandler: nil)
-    }
-}

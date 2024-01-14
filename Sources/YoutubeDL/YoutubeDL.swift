@@ -236,6 +236,9 @@ open class YoutubeDL: NSObject {
                     print(#function, "no download with", directory, pendingDownloads.map(\.directory))
                     return
                 }
+                if let index = pendingDownloads.firstIndex(where: { $0.directory.path == directory.path }) {
+                    pendingDownloads.remove(at: index)
+                }
                 let _ = tryMerge(directory: directory, title: url.title, timeRange: download.timeRange)
                 finishedContinuation?.yield(url)
             case .otherVideo:
@@ -476,7 +479,10 @@ open class YoutubeDL: NSObject {
                                          bitRate: bitRate,
                                          transcodePending: false))
         
-        await downloader.session.allTasks.forEach { $0.cancel() }
+        await downloader.session.allTasks.forEach {
+            print($0)
+//            $0.cancel()
+        }
         
         for format in formats {
             try download(format: format, resume: !downloader.isDownloading || isTest, chunked: options.contains(.chunked), directory: directory ?? downloadsDirectory, title: info.safeTitle)
@@ -686,8 +692,6 @@ open class YoutubeDL: NSObject {
             guard UIApplication.shared.applicationState == .active else {
                 guard let index = self.pendingDownloads.firstIndex(where: { $0.directory.path == directory.path }) else { fatalError() }
                 self.pendingDownloads[index].transcodePending = true
-                
-                notify(body: NSLocalizedString("AskTranscode", comment: "Notification body"), identifier: NotificationRequestIdentifier.transcode.rawValue)
                 return
             }
             
@@ -740,9 +744,7 @@ open class YoutubeDL: NSObject {
         if !keepIntermediates {
             removeItem(at: url)
         }
-        
-        notify(body: NSLocalizedString("FinishedTranscoding", comment: "Notification body"))
-        
+                
         tryMerge(directory: url.deletingLastPathComponent(), title: url.title, timeRange: download.timeRange)
     }
     
@@ -768,8 +770,6 @@ open class YoutubeDL: NSObject {
             
             if let continuation = self.finishedContinuation {
                 continuation.yield(url)
-            } else {
-                notify(body: NSLocalizedString("Download complete!", comment: "Notification body"))
             }
             DispatchQueue.main.async {
                 let progress = self.downloader.progress
