@@ -791,43 +791,64 @@ open class YoutubeDL: NSObject {
         try FileManager.default.moveItem(at: location, to: pythonModuleURL)
     }
     
-    public static func downloadPythonModule(from url: URL = latestDownloadURL, completionHandler: @escaping (Swift.Error?) -> Void) {
-        let task = URLSession.shared.downloadTask(with: url) { (location, response, error) in
-            guard let location = location else {
-                completionHandler(error)
-                return
-            }
-            do {
-                try movePythonModule(location)
-
-                completionHandler(nil)
-            }
-            catch {
-                print(#function, error)
-                completionHandler(error)
-            }
-        }
-        
-        task.resume()
-    }
-    
     public static func downloadPythonModule(from url: URL = latestDownloadURL) async throws {
-        let stopWatch = StopWatch(); defer { stopWatch.report() }
-        if #available(iOS 15.0, *) {
-            let (location, _) = try await URLSession.shared.download(from: url)
-            try movePythonModule(location)
-        } else {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Swift.Error>) in
-                downloadPythonModule(from: url) { error in
-                    if let error = error {
-                        continuation.resume(throwing: error)
-                    } else {
-                        continuation.resume()
-                    }
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Swift.Error>) in
+            downloadPythonModule(from: url) { error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume()
                 }
             }
         }
     }
+
+    public static func downloadPythonModule(from url: URL, completionHandler: @escaping (Swift.Error?) -> Void) {
+        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+            if let error = error {
+                completionHandler(error)
+                return
+            }
+
+            guard let data = data else {
+                completionHandler(NSError(domain: "DataError", code: 0, userInfo: [NSLocalizedDescriptionKey: "No data received"]))
+                return
+            }
+
+            do {
+                let directory: FileManager.SearchPathDirectory = .documentDirectory
+                let tempDirectoryURL = try FileManager.default.url(for: directory, in: .userDomainMask, appropriateFor: nil, create: true)
+                let fileName = UUID().uuidString + ".tmp"
+                let tempURL = tempDirectoryURL.appendingPathComponent(fileName)
+                try data.write(to: tempURL)
+                try movePythonModule(tempURL)
+                completionHandler(nil)
+            } catch {
+                print(#function, error)
+                completionHandler(error)
+            }
+        }
+
+        task.resume()
+    }
+
+//    public static func downloadPythonModule(from url: URL = latestDownloadURL) async throws {
+//        let stopWatch = StopWatch(); defer { stopWatch.report() }
+//        if #available(iOS 15.0, *) {
+//            let (location, _) = try await URLSession.shared.download(from: url)
+//            try movePythonModule(location)
+//        } else {
+//            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Swift.Error>) in
+//                downloadPythonModule(from: url) { error in
+//                    if let error = error {
+//                        continuation.resume(throwing: error)
+//                    } else {
+//                        continuation.resume()
+//                    }
+//                }
+//            }
+//        }
+//    }
 }
 
 let av1CodecPrefix = "av01."
